@@ -25,6 +25,7 @@ import { BinaryContent } from './BinaryContent';
 import { getTheme, reconfigureTheme } from './cm-theme';
 import { indentKeyBinding } from './indent';
 import { getLanguage } from './languages';
+import { aiCompletionSource } from '~/lib/ml/code-completion/editor-integration';
 
 const logger = createScopedLogger('CodeMirrorEditor');
 
@@ -316,8 +317,16 @@ function newEditorState(
         indentKeyBinding,
       ]),
       indentUnit.of('\t'),
+      // Replace default autocompletion with AI-powered completion
       autocompletion({
         closeOnBlur: false,
+        override: [
+          async (context) => {
+            return aiCompletionSource.getCompletions(context);
+          }
+        ],
+        defaultKeymap: true,
+        maxRenderedOptions: 10,
       }),
       tooltips({
         position: 'absolute',

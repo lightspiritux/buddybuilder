@@ -1,35 +1,36 @@
 import { atom } from 'nanostores';
 
-export type Theme = 'dark' | 'light';
+export type Theme = 'light' | 'dark';
 
-export const kTheme = 'bolt_theme';
+export const themeStore = atom<Theme>('dark');
 
-export function themeIsDark() {
-  return themeStore.get() === 'dark';
-}
-
-export const DEFAULT_THEME = 'light';
-
-export const themeStore = atom<Theme>(initStore());
-
-function initStore() {
-  if (!import.meta.env.SSR) {
-    const persistedTheme = localStorage.getItem(kTheme) as Theme | undefined;
-    const themeAttribute = document.querySelector('html')?.getAttribute('data-theme');
-
-    return persistedTheme ?? (themeAttribute as Theme) ?? DEFAULT_THEME;
-  }
-
-  return DEFAULT_THEME;
-}
-
-export function toggleTheme() {
-  const currentTheme = themeStore.get();
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-  themeStore.set(newTheme);
-
-  localStorage.setItem(kTheme, newTheme);
-
-  document.querySelector('html')?.setAttribute('data-theme', newTheme);
-}
+export const getThemeStyles = (theme: Theme) => {
+  return {
+    light: {
+      background: 'linear-gradient(180deg, #ffffff, #669187)',
+      text: '#000000',
+      border: '#e5e7eb',
+      hover: '#f3f4f6',
+      accent: '#3b82f6',
+      accentHover: '#2563eb',
+      muted: '#6b7280',
+      mutedHover: '#4b5563',
+      error: '#ef4444',
+      success: '#22c55e',
+      warning: '#f59e0b'
+    },
+    dark: {
+      background: 'linear-gradient(180deg, #122029, #669187)',
+      text: '#ffffff',
+      border: '#374151',
+      hover: '#1f2937',
+      accent: '#3b82f6',
+      accentHover: '#2563eb',
+      muted: '#9ca3af',
+      mutedHover: '#d1d5db',
+      error: '#ef4444',
+      success: '#22c55e',
+      warning: '#f59e0b'
+    }
+  }[theme];
+};
