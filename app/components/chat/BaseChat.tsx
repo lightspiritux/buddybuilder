@@ -7,11 +7,12 @@ import { Menu } from '~/components/sidebar/Menu.client';
 import { IconButton } from '~/components/ui/IconButton';
 import { Workbench } from '~/components/workbench/Workbench.client';
 import { classNames } from '~/utils/classNames';
-import { MODEL_LIST, DEFAULT_PROVIDER } from '~/utils/constants';
+import { MODEL_LIST } from '~/utils/constants';
 import { Messages } from './Messages.client';
 import { SendButton } from './SendButton.client';
 import { useState } from 'react';
-import { APIKeyManager } from './APIKeyManager';
+import APIKeyManager from './APIKeyManager'; // Updated import statement
+import { ModelSelector } from './ModelSelector';
 import Cookies from 'js-cookie';
 
 import styles from './BaseChat.module.scss';
@@ -24,46 +25,7 @@ const EXAMPLE_PROMPTS = [
   { text: 'How do I center a div?' },
 ];
 
-const providerList = [...new Set(MODEL_LIST.map((model) => model.provider))]
-
-const ModelSelector = ({ model, setModel, provider, setProvider, modelList, providerList }) => {
-  return (
-    <div className="mb-2 flex gap-2">
-      <select 
-        value={provider}
-        onChange={(e) => {
-          setProvider(e.target.value);
-          const firstModel = [...modelList].find(m => m.provider == e.target.value);
-          setModel(firstModel ? firstModel.name : '');
-        }}
-        className="flex-1 p-2 rounded-lg border border-bolt-elements-borderColor bg-bolt-elements-prompt-background text-bolt-elements-textPrimary focus:outline-none focus:ring-2 focus:ring-bolt-elements-focus transition-all"
-      >
-        {providerList.map((provider) => (
-          <option key={provider} value={provider}>
-            {provider}
-          </option>
-        ))}
-        <option key="Ollama" value="Ollama">
-          Ollama
-        </option>
-        <option key="OpenAILike" value="OpenAILike">
-          OpenAILike
-        </option>
-      </select>
-      <select
-        value={model}
-        onChange={(e) => setModel(e.target.value)}
-        className="flex-1 p-2 rounded-lg border border-bolt-elements-borderColor bg-bolt-elements-prompt-background text-bolt-elements-textPrimary focus:outline-none focus:ring-2 focus:ring-bolt-elements-focus transition-all"
-      >
-        {[...modelList].filter(e => e.provider == provider && e.name).map((modelOption) => (
-          <option key={modelOption.name} value={modelOption.name}>
-            {modelOption.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-};
+const providerList = [...new Set(MODEL_LIST.map((model) => model.provider))];
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -313,3 +275,5 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     );
   },
 );
+
+BaseChat.displayName = 'BaseChat';
