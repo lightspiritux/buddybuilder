@@ -1,59 +1,70 @@
-import { format, isAfter, isThisWeek, isThisYear, isToday, isYesterday, subDays } from 'date-fns';
-import type { ChatHistoryItem } from '~/lib/persistence';
-
-type Bin = { category: string; items: ChatHistoryItem[] };
-
-export function binDates(_list: ChatHistoryItem[]) {
-  const list = _list.toSorted((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
-
-  const binLookup: Record<string, Bin> = {};
-  const bins: Array<Bin> = [];
-
-  list.forEach((item) => {
-    const category = dateCategory(new Date(item.timestamp));
-
-    if (!(category in binLookup)) {
-      const bin = {
-        category,
-        items: [item],
-      };
-
-      binLookup[category] = bin;
-
-      bins.push(bin);
-    } else {
-      binLookup[category].items.push(item);
-    }
-  });
-
-  return bins;
+export interface Chat {
+  id: string;
+  title: string;
+  createdAt: Date;
+  updatedAt: Date;
+  messages: Array<{
+    id: string;
+    content: string;
+    role: 'user' | 'assistant';
+    timestamp: Date;
+  }>;
 }
 
-function dateCategory(date: Date) {
-  if (isToday(date)) {
-    return 'Today';
-  }
+export function groupChatsByDate(chats: Chat[]): Record<string, Chat[]> {
+  const groups: Record<string, Chat[]> = {};
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
 
-  if (isYesterday(date)) {
-    return 'Yesterday';
-  }
+  chats.forEach(chat => {
+    const chatDate = new Date(chat.updatedAt);
+    let dateKey: string;
 
-  if (isThisWeek(date)) {
-    // e.g., "Monday"
-    return format(date, 'eeee');
-  }
+    if (isSameDay(chatDate, today)) {
+      dateKey = 'Today';
+    } else if (isSameDay(chatDate, yesterday)) {
+      dateKey = 'Yesterday';
+    } else if (isWithinLastWeek(chatDate, today)) {
+      dateKey = 'Last 7 Days';
+    } else if (isWithinLastMonth(chatDate, today)) {
+      dateKey = 'Last 30 Days';
+    } else {
+      dateKey = 'Older';
+    }
 
-  const thirtyDaysAgo = subDays(new Date(), 30);
+    if (!groups[dateKey]) {
+      groups[dateKey] = [];
+    }
+    groups[dateKey].push(chat);
+  });
 
-  if (isAfter(date, thirtyDaysAgo)) {
-    return 'Last 30 Days';
-  }
+  // Sort chats within each group by updatedAt
+  Object.values(groups).forEach(groupChats => {
+    groupChats.sort((a, b) => 
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+  });
 
-  if (isThisYear(date)) {
-    // e.g., "July"
-    return format(date, 'MMMM');
-  }
+  return groups;
+}
 
-  // e.g., "July 2023"
-  return format(date, 'MMMM yyyy');
+function isSameDay(date1: Date, date2: Date): boolean {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
+}
+
+function isWithinLastWeek(date: Date, today: Date): boolean {
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  return date > weekAgo;
+}
+
+function isWithinLastMonth(date: Date, today: Date): boolean {
+  const monthAgo = new Date(today);
+  monthAgo.setDate(monthAgo.getDate() - 30);
+  return date > monthAgo;
 }

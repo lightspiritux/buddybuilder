@@ -3,6 +3,7 @@ import { ClientOnly } from 'remix-utils/client-only';
 import { BaseChat } from '~/components/chat/BaseChat';
 import { Chat } from '~/components/chat/Chat.client';
 import { Header } from '~/components/header/Header';
+import { DEFAULT_MODEL, DEFAULT_PROVIDER } from '~/utils/constants';
 
 export const meta: MetaFunction = () => {
   return [
@@ -17,7 +18,16 @@ export default function Index() {
   return (
     <div className="flex flex-col h-full w-full">
       <Header />
-      <ClientOnly fallback={<BaseChat />}>{() => <Chat />}</ClientOnly>
+      <ClientOnly fallback={
+        <BaseChat 
+          model={DEFAULT_MODEL}
+          setModel={() => {}}
+          provider={DEFAULT_PROVIDER}
+          setProvider={() => {}}
+        />
+      }>
+        {() => <Chat />}
+      </ClientOnly>
     </div>
   );
 }

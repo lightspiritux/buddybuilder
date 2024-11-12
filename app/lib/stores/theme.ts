@@ -4,6 +4,11 @@ export type Theme = 'light' | 'dark';
 
 export const themeStore = atom<Theme>('dark');
 
+export const toggleTheme = () => {
+  const currentTheme = themeStore.get();
+  themeStore.set(currentTheme === 'light' ? 'dark' : 'light');
+};
+
 export const getThemeStyles = (theme: Theme) => {
   return {
     light: {

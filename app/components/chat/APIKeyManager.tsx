@@ -1,49 +1,75 @@
-import React, { useState } from 'react';
-import { IconButton } from '~/components/ui/IconButton';
+import React, { useState, useEffect } from 'react';
 
 interface APIKeyManagerProps {
-  provider: string;
-  apiKey: string;
-  setApiKey: (key: string) => void;
+  defaultValue?: string;
+  onChange?: (value: string) => void;
 }
 
-export const APIKeyManager: React.FC<APIKeyManagerProps> = ({ provider, apiKey, setApiKey }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [tempKey, setTempKey] = useState(apiKey);
+const APIKeyManager: React.FC<APIKeyManagerProps> = ({ defaultValue = '', onChange }) => {
+  const [apiKey, setApiKey] = useState(defaultValue);
+  const [isEditing, setIsEditing] = useState(!defaultValue);
+
+  useEffect(() => {
+    // Load API key from localStorage on mount
+    const storedKey = localStorage.getItem('openai_api_key');
+    if (storedKey) {
+      setApiKey(storedKey);
+      setIsEditing(false);
+      onChange?.(storedKey);
+    }
+  }, [onChange]);
 
   const handleSave = () => {
-    setApiKey(tempKey);
-    setIsEditing(false);
+    if (apiKey) {
+      localStorage.setItem('openai_api_key', apiKey);
+      setIsEditing(false);
+      onChange?.(apiKey);
+    }
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSave();
+    }
   };
 
   return (
-    <div className="flex items-center gap-2 mt-2 mb-2">
-      <span className="text-sm text-bolt-elements-textSecondary">{provider} API Key:</span>
+    <div className="flex items-center gap-2">
       {isEditing ? (
         <>
           <input
             type="password"
-            value={tempKey}
-            onChange={(e) => setTempKey(e.target.value)}
-            className="flex-1 p-1 text-sm rounded border border-bolt-elements-borderColor bg-bolt-elements-prompt-background text-bolt-elements-textPrimary focus:outline-none focus:ring-2 focus:ring-bolt-elements-focus"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Enter your OpenAI API key"
+            className="flex-1 px-3 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoFocus
           />
-          <IconButton onClick={handleSave} title="Save API Key">
-            <div className="i-ph:check" />
-          </IconButton>
-          <IconButton onClick={() => setIsEditing(false)} title="Cancel">
-            <div className="i-ph:x" />
-          </IconButton>
+          <button
+            onClick={handleSave}
+            className="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            Save
+          </button>
         </>
       ) : (
         <>
-          <span className="flex-1 text-sm text-bolt-elements-textPrimary">
-            {apiKey ? '••••••••' : 'Not set (will still work if set in .env file)'}
-          </span>
-          <IconButton onClick={() => setIsEditing(true)} title="Edit API Key">
-            <div className="i-ph:pencil-simple" />
-          </IconButton>
+          <span className="flex-1 text-sm text-gray-600">API Key: ••••••••••••••••</span>
+          <button
+            onClick={handleEdit}
+            className="px-3 py-1 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            Edit
+          </button>
         </>
       )}
     </div>
   );
 };
+
+export default APIKeyManager;

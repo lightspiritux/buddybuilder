@@ -1,24 +1,33 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
-import { StreamingTextResponse, parseStreamPart } from 'ai';
-import { streamText } from '~/lib/.server/llm/stream-text';
-import { stripIndents } from '~/utils/stripIndent';
+import { StreamingTextResponse, parseStreamPart, type Message } from 'ai';
+import { streamText } from '../lib/server/llm/stream-text';
+import { stripIndents } from '../utils/stripIndent';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-export async function action(args: ActionFunctionArgs) {
+interface CloudflareEnv {
+  cloudflare: {
+    env: {
+      OPENAI_API_KEY: string;
+    };
+  };
+}
+
+type EnhancerMessage = Omit<Message, 'id'>;
+
+export async function action(args: ActionFunctionArgs & CloudflareEnv) {
   return enhancerAction(args);
 }
 
-async function enhancerAction({ context, request }: ActionFunctionArgs) {
+async function enhancerAction({ context, request }: ActionFunctionArgs & CloudflareEnv) {
   const { message } = await request.json<{ message: string }>();
 
   try {
-    const result = await streamText(
-      [
-        {
-          role: 'user',
-          content: stripIndents`
+    const messages: EnhancerMessage[] = [
+      {
+        role: 'user',
+        content: stripIndents`
           I want you to improve the user prompt that is wrapped in \`<original_prompt>\` tags.
 
           IMPORTANT: Only respond with the improved prompt and nothing else!
@@ -27,9 +36,12 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
             ${message}
           </original_prompt>
         `,
-        },
-      ],
-      context.cloudflare.env,
+      },
+    ];
+
+    const result = await streamText(
+      messages as Message[],
+      (context as CloudflareEnv).cloudflare.env,
     );
 
     const transformStream = new TransformStream({
@@ -46,7 +58,7 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
       },
     });
 
-    const transformedStream = result.toAIStream().pipeThrough(transformStream);
+    const transformedStream = result.pipeThrough(transformStream);
 
     return new StreamingTextResponse(transformedStream);
   } catch (error) {

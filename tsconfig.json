@@ -18,37 +18,23 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["app/*"]
+      "~/*": ["./app/*"]
     },
-    "esModuleInterop": true,
-    "typeRoots": [
-      "./node_modules/@types",
-      "./app/types"
-    ],
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "useUnknownInCatchVariables": true,
-    "alwaysStrict": true
+    "types": [
+      "vitest/globals",
+      "@testing-library/jest-dom",
+      "vite/client"
+    ]
   },
   "include": [
-    "app/**/*.ts",
-    "app/**/*.tsx",
-    "app/**/*.js",
-    "app/**/*.jsx",
-    "vitest.config.ts",
-    "vite.config.ts",
-    "app/test/setup.ts",
-    "app/types/**/*.d.ts"
+    "remix.env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "app/types/global.d.ts"
   ],
   "exclude": [
     "node_modules",
     "build",
-    "dist",
-    "coverage"
-  ],
-  "references": [{ "path": "./tsconfig.node.json" }]
+    "public/build"
+  ]
 }

@@ -25,7 +25,7 @@ type IconButtonWithChildrenProps = {
 
 type IconButtonProps = IconButtonWithoutChildrenProps | IconButtonWithChildrenProps;
 
-export const IconButton = memo(
+const IconButtonComponent = memo(
   ({
     icon,
     size = 'xl',
@@ -75,3 +75,7 @@ function getIconSize(size: IconSize) {
     return 'text-2xl';
   }
 }
+
+IconButtonComponent.displayName = 'IconButton';
+
+export { IconButtonComponent as IconButton };

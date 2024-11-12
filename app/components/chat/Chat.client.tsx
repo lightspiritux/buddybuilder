@@ -68,7 +68,7 @@ interface ChatProps {
   storeMessageHistory: (messages: Message[]) => Promise<void>;
 }
 
-export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProps) => {
+const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProps) => {
   useShortcuts();
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);

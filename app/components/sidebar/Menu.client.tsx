@@ -1,172 +1,155 @@
-import { motion, type Variants } from 'framer-motion';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { toast } from 'react-toastify';
-import { Dialog, DialogButton, DialogDescription, DialogRoot, DialogTitle } from '~/components/ui/Dialog';
-import { IconButton } from '~/components/ui/IconButton';
-import { ThemeSwitch } from '~/components/ui/ThemeSwitch';
-import { db, deleteById, getAll, chatId, type ChatHistoryItem } from '~/lib/persistence';
-import { cubicEasingFn } from '~/utils/easings';
-import { logger } from '~/utils/logger';
+import React, { useState } from 'react';
+import { Link, useLocation } from '@remix-run/react';
+import { useChatHistory } from '../../lib/persistence';
 import { HistoryItem } from './HistoryItem';
-import { binDates } from './date-binning';
+import * as Dialog from '@radix-ui/react-dialog';
+import type { ChatHistoryItem } from '../../lib/persistence/useChatHistory';
 
-const menuVariants = {
-  closed: {
-    opacity: 0,
-    visibility: 'hidden',
-    left: '-150px',
-    transition: {
-      duration: 0.2,
-      ease: cubicEasingFn,
-    },
-  },
-  open: {
-    opacity: 1,
-    visibility: 'initial',
-    left: 0,
-    transition: {
-      duration: 0.2,
-      ease: cubicEasingFn,
-    },
-  },
-} satisfies Variants;
+export const Menu: React.FC = () => {
+  const location = useLocation();
+  const { initialMessages, ready } = useChatHistory();
+  const [isOpen, setIsOpen] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
 
-type DialogContent = { type: 'delete'; item: ChatHistoryItem } | null;
-
-export function Menu() {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [list, setList] = useState<ChatHistoryItem[]>([]);
-  const [open, setOpen] = useState(false);
-  const [dialogContent, setDialogContent] = useState<DialogContent>(null);
-
-  const loadEntries = useCallback(() => {
-    if (db) {
-      getAll(db)
-        .then((list) => list.filter((item) => item.urlId && item.description))
-        .then(setList)
-        .catch((error) => toast.error(error.message));
-    }
-  }, []);
-
-  const deleteItem = useCallback((event: React.UIEvent, item: ChatHistoryItem) => {
-    event.preventDefault();
-
-    if (db) {
-      deleteById(db, item.id)
-        .then(() => {
-          loadEntries();
-
-          if (chatId.get() === item.id) {
-            // hard page navigation to clear the stores
-            window.location.pathname = '/';
-          }
-        })
-        .catch((error) => {
-          toast.error('Failed to delete conversation');
-          logger.error(error);
-        });
-    }
-  }, []);
-
-  const closeDialog = () => {
-    setDialogContent(null);
+  const toggleMenu = () => {
+    setIsOpen(!isOpen);
   };
 
-  useEffect(() => {
-    if (open) {
-      loadEntries();
-    }
-  }, [open]);
+  if (!ready) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    const enterThreshold = 40;
-    const exitThreshold = 40;
+  const handleDelete = (event: React.UIEvent) => {
+    event.preventDefault();
+    // TODO: Implement chat deletion
+    console.log('Delete chat:', selectedChat);
+  };
 
-    function onMouseMove(event: MouseEvent) {
-      if (event.pageX < enterThreshold) {
-        setOpen(true);
-      }
+  const chatItems: ChatHistoryItem[] = initialMessages.map((message, index) => ({
+    id: String(index),
+    urlId: String(index),
+    description: message.content || 'New Chat',
+    messages: [message],
+    timestamp: new Date().toISOString()
+  }));
 
-      if (menuRef.current && event.clientX > menuRef.current.getBoundingClientRect().right + exitThreshold) {
-        setOpen(false);
-      }
-    }
-
-    window.addEventListener('mousemove', onMouseMove);
-
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-    };
-  }, []);
+  const filteredChats = chatItems.filter(chat => 
+    (chat.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <motion.div
-      ref={menuRef}
-      initial="closed"
-      animate={open ? 'open' : 'closed'}
-      variants={menuVariants}
-      className="flex flex-col side-menu fixed top-0 w-[350px] h-full bg-bolt-elements-background-depth-2 border-r rounded-r-3xl border-bolt-elements-borderColor z-sidebar shadow-xl shadow-bolt-elements-sidebar-dropdownShadow text-sm"
-    >
-      <div className="flex items-center h-[var(--header-height)]">{/* Placeholder */}</div>
-      <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
-        <div className="p-4">
-          <a
-            href="/"
-            className="flex gap-2 items-center bg-bolt-elements-sidebar-buttonBackgroundDefault text-bolt-elements-sidebar-buttonText hover:bg-bolt-elements-sidebar-buttonBackgroundHover rounded-md p-2 transition-theme"
+    <Dialog.Root>
+      <div className={`flex flex-col h-full bg-bolt-elements-background-depth-2 border-r border-bolt-elements-border transition-all duration-300 ${isOpen ? 'w-64' : 'w-16'}`}>
+        <div className="flex items-center justify-between p-4 border-b border-bolt-elements-border">
+          <button
+            onClick={toggleMenu}
+            className="p-2 rounded-lg hover:bg-bolt-elements-background-depth-3 focus:outline-none"
+            aria-label={isOpen ? 'Collapse menu' : 'Expand menu'}
           >
-            <span className="inline-block i-bolt:chat scale-110" />
-            Start new chat
-          </a>
+            <svg
+              className={`w-6 h-6 transition-transform ${isOpen ? 'rotate-0' : 'rotate-180'}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d={isOpen ? 'M4 6h16M4 12h16M4 18h16' : 'M6 18L18 6M6 6l12 12'}
+              />
+            </svg>
+          </button>
+          {isOpen && (
+            <Link
+              to="/"
+              className="px-4 py-2 text-sm font-medium text-bolt-elements-textPrimary bg-bolt-elements-background-depth-3 rounded-lg hover:bg-bolt-elements-background-depth-4 focus:outline-none focus:ring-2 focus:ring-bolt-elements-border"
+            >
+              New Chat
+            </Link>
+          )}
         </div>
-        <div className="text-bolt-elements-textPrimary font-medium pl-6 pr-5 my-2">Your Chats</div>
-        <div className="flex-1 overflow-none pl-4 pr-5 pb-5">
-          {list.length === 0 && <div className="pl-2 text-bolt-elements-textTertiary">No previous conversations</div>}
-          <DialogRoot open={dialogContent !== null}>
-            {binDates(list).map(({ category, items }) => (
-              <div key={category} className="mt-4 first:mt-0 space-y-1">
-                <div className="text-bolt-elements-textTertiary sticky top-0 z-1 bg-bolt-elements-background-depth-2 pl-2 pt-2 pb-1">
-                  {category}
-                </div>
-                {items.map((item) => (
-                  <HistoryItem key={item.id} item={item} onDelete={() => setDialogContent({ type: 'delete', item })} />
-                ))}
-              </div>
-            ))}
-            <Dialog onBackdrop={closeDialog} onClose={closeDialog}>
-              {dialogContent?.type === 'delete' && (
-                <>
-                  <DialogTitle>Delete Chat?</DialogTitle>
-                  <DialogDescription asChild>
-                    <div>
-                      <p>
-                        You are about to delete <strong>{dialogContent.item.description}</strong>.
-                      </p>
-                      <p className="mt-1">Are you sure you want to delete this chat?</p>
-                    </div>
-                  </DialogDescription>
-                  <div className="px-5 pb-4 bg-bolt-elements-background-depth-2 flex gap-2 justify-end">
-                    <DialogButton type="secondary" onClick={closeDialog}>
-                      Cancel
-                    </DialogButton>
-                    <DialogButton
-                      type="danger"
-                      onClick={(event) => {
-                        deleteItem(event, dialogContent.item);
-                        closeDialog();
-                      }}
-                    >
-                      Delete
-                    </DialogButton>
-                  </div>
-                </>
-              )}
-            </Dialog>
-          </DialogRoot>
-        </div>
-        <div className="flex items-center border-t border-bolt-elements-borderColor p-4">
-          <ThemeSwitch className="ml-auto" />
+
+        {isOpen && (
+          <div className="p-4 border-b border-bolt-elements-border">
+            <input
+              type="text"
+              placeholder="Search chats..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 bg-bolt-elements-background-depth-1 border border-bolt-elements-border rounded-lg focus:outline-none focus:ring-2 focus:ring-bolt-elements-border text-bolt-elements-textPrimary"
+            />
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto">
+          {isOpen ? (
+            <div className="space-y-1 p-2">
+              {filteredChats.map((chat) => (
+                <HistoryItem
+                  key={chat.id}
+                  item={chat}
+                  onDelete={(event) => {
+                    setSelectedChat(chat.id);
+                    handleDelete(event);
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center py-4">
+              <Link
+                to="/"
+                className="p-2 mb-2 text-bolt-elements-textSecondary rounded-lg hover:bg-bolt-elements-background-depth-3"
+                title="New Chat"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
-    </motion.div>
+
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+        <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-bolt-elements-background-depth-2 p-6 rounded-lg shadow-xl">
+          <Dialog.Title className="text-lg font-medium text-bolt-elements-textPrimary mb-4">
+            Delete Chat
+          </Dialog.Title>
+          <Dialog.Description className="text-bolt-elements-textSecondary mb-6">
+            Are you sure you want to delete this chat? This action cannot be undone.
+          </Dialog.Description>
+          <div className="flex justify-end gap-4">
+            <Dialog.Close asChild>
+              <button className="px-4 py-2 text-sm font-medium text-bolt-elements-textSecondary bg-bolt-elements-background-depth-3 rounded-lg hover:bg-bolt-elements-background-depth-4">
+                Cancel
+              </button>
+            </Dialog.Close>
+            <Dialog.Close asChild>
+              <button className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600">
+                Delete
+              </button>
+            </Dialog.Close>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
-}
+};
